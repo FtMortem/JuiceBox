@@ -14,8 +14,9 @@ async function dropTables() {
   try {
     console.log("Starting to drop tables...");
 
-    // have to make sure to drop in correct order
     await client.query(`
+      DROP TABLE IF EXISTS post_tags;
+      DROP TABLE IF EXISTS tags;
       DROP TABLE IF EXISTS posts;
       DROP TABLE IF EXISTS users;
     `);
@@ -47,7 +48,15 @@ async function createTables() {
         content TEXT NOT NULL,
         active BOOLEAN DEFAULT true
       );
-    `);
+      CREATE TABLE tags (
+        id SERIAL PRIMARY KEY,
+        name varchar(255) NOT NULL
+      );
+      CREATE TABLE post_tags (
+        "PostId" INTEGER REFERENCES posts(id),
+        "tagId" INTEGER REFERENCES tags (id)
+        );`
+    );
 
     console.log("Finished building tables!");
   } catch (error) {

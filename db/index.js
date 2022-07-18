@@ -171,6 +171,38 @@ async function getPostsByUser(userId) {
   }
 }
 
+async function createTags(taglist) {
+  if (taglist.length === 0) {
+    return;
+}
+
+// need something like: $1), ($2), ($3 
+
+
+  const insertValues = taglist.map(
+    (_, index) => `$${index + 1}`).join('),(');
+  
+  const selectValues = taglist.map(
+    (_, index) => `$${index + 1}`).join(',');
+  
+    try {
+      const {
+        rows: [tag],
+      } = await client.query(
+        `
+        INSERT INTO tags(name,) 
+        VALUES($1), ($2), ($3)
+        ON CONFLICT (name) DO NOTHING;
+      `
+      );
+  
+      return post;
+    } catch (error) {
+      throw error;
+    }
+
+}
+
 module.exports = {
   client,
   createUser,
