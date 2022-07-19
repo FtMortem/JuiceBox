@@ -55,11 +55,10 @@ async function createTables() {
         name varchar(255) NOT NULL
       );
       CREATE TABLE post_tags (
-        "PostId" INTEGER REFERENCES posts(id),
+        "postId" INTEGER REFERENCES posts(id),
         "tagId" INTEGER REFERENCES tags(id),
-        UNIQUE ('postId', 'tagId')
-        );`
-    );
+        UNIQUE ("postId", "tagId")
+        );`);
 
     console.log("Finished building tables!");
   } catch (error) {
@@ -102,10 +101,10 @@ async function createInitialTags() {
     console.log("Starting to create tags...");
 
     const [happy, sad, inspo, catman] = await createTags([
-      '#happy', 
-      '#worst-day-ever', 
-      '#youcandoanything',
-      '#catmandoeverything'
+      "#happy",
+      "#worst-day-ever",
+      "#youcandoanything",
+      "#catmandoeverything",
     ]);
 
     const [postOne, postTwo, postThree] = await getAllPosts();
@@ -150,10 +149,6 @@ async function createInitialPosts() {
     throw error;
   }
 }
-
-
-
-
 
 async function rebuildDB() {
   try {
@@ -206,10 +201,6 @@ async function testDB() {
     throw error;
   }
 }
-
-
-
-
 
 rebuildDB()
   .then(testDB)
