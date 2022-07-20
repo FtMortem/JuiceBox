@@ -1,4 +1,4 @@
-const { Client } = require("pg"); // imports the pg module
+const { Client } = require("pg");
 
 const client = new Client("postgres://localhost:5432/juicebox-dev");
 
@@ -27,12 +27,11 @@ async function createUser({ username, password, name, location }) {
 }
 
 async function updateUser(id, fields = {}) {
-  // build the set string
+
   const setString = Object.keys(fields)
     .map((key, index) => `"${key}"=$${index + 1}`)
     .join(", ");
 
-  // return early if this is called without fields
   if (setString.length === 0) {
     return;
   }
@@ -99,7 +98,7 @@ async function getUserById(userId) {
   authorId,
   title,
   content,
-  tags = [] // this is new
+  tags = []
 }) {
   try {
     const { rows: [ post ] } = await client.query(`
@@ -116,48 +115,60 @@ async function getUserById(userId) {
   }
 }
 
-async function updatePost(id, fields = {}) {
-  // build the set string
-  const setString = Object.keys(fields)
-    .map((key, index) => `"${key}"=$${index + 1}`)
-    .join(", ");
+async function updatePost(postId, fields = {}) {
 
-  // return early if this is called without fields
-  if (setString.length === 0) {
-    return;
+  //NEED TO FIGURE OUT WHERE LINES 121-132 GO
+  const originalPost = {
+    title: "title",
+    content: "content",
+    tags: ["#x", "#y", "#z"]
+  }
+  
+  const updatedPost = {
+    id: 3,
+    title: "new title",
+    content: "maybe this changed",
+    tags: ["#x", "z", "w"]
   }
 
+
+
+  const { tags } = fields;
+  delete fields.tags;
+
+  const setString = Object.keys(fields).map(
+    (key, index) => `"${ key }"=$${ index + 1 }`
+  ).join(', ');
+
   try {
-    const {
-      rows: [post],
-    } = await client.query(
-      `
-      UPDATE posts
-      SET ${setString}
-      WHERE id=${id}
-      RETURNING *;
-    `,
-      Object.values(fields)
-    );
+    if (setString.length > 0) {
+      await client.query(`
+        UPDATE posts
+        SET ${ setString }
+        WHERE id=${ postId }
+        RETURNING *;
+      `, Object.values(fields));
+    }
 
-    return post;
-  } catch (error) {
-    throw error;
-  }
-}
+    if (tags === undefined) {
+      return await getPostById(postId);
+    }
 
-async function getAllPosts() {
-  try {
-    const { rows: postIds } = await client.query(`
-      SELECT id
-      FROM posts;
-    `);
+    const tagList = await createTags(tags);
+    const tagListIdString = tagList.map(
+      tag => `${ tag.id }`
+    ).join(', ');
 
-    const posts = await Promise.all(postIds.map(
-      post => getPostById( post.id )
-    ));
+    await client.query(`
+      DELETE FROM post_tags
+      WHERE "tagId"
+      NOT IN (${ tagListIdString })
+      AND "postId"=$1;
+    `, [postId]);
 
-    return posts;
+    await addTagsToPost(postId, tagList);
+
+    return await getPostById(postId);
   } catch (error) {
     throw error;
   }
@@ -193,8 +204,6 @@ async function createTags(taglist) {
     (_, index) => `$${index + 1}`).join(',');
   
     try {
-      // const {
-      //   rows: [tag],
        await client.query(
         `
         INSERT INTO tags(name) 
@@ -276,6 +285,52 @@ async function getPostById(postId) {
   }
 }
 
+async function getAllPosts() {
+  try {
+    const { rows: postIds } = await client.query(`
+      SELECT id
+      FROM posts;
+    `);
+
+    const posts = await Promise.all(postIds.map(
+      post => getPostById( post.id )
+    ));
+
+    return posts;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function getAllTags() {
+  try {
+    const { rows: tagIds } = await client.query(`
+      SELECT id
+      FROM tags;
+    `);
+    return tags;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function getPostsByTagName(tagName) {
+  try {
+    const { rows: postIds } = await client.query(`
+      SELECT posts.id
+      FROM posts
+      JOIN post_tags ON posts.id=post_tags."postId"
+      JOIN tags ON tags.id=post_tags."tagId"
+      WHERE tags.name=$1;
+    `, [tagName]);
+
+    return await Promise.all(postIds.map(
+      post => getPostById(post.id)
+    ));
+  } catch (error) {
+    throw error;
+  }
+} 
 
 
 
@@ -288,8 +343,10 @@ module.exports = {
   getUserById,
   createPost,
   updatePost,
-  getAllPosts,
+  getAllTags,
   getPostsByUser,
+  getAllPosts,
   addTagsToPost,
   createTags,
+  getPostsByTagName,
 };
